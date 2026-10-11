@@ -74,6 +74,8 @@ textarea#sentenceText{width:100%;border:1px solid var(--line);border-radius:10px
 .btn-row button{flex:1;min-width:100px;padding:11px 6px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:14px;color:var(--ink)}
 .btn-row button.primary{background:var(--pri);color:#fff;border:none;font-weight:700}
 .btn-row button:disabled{opacity:.55}
+body.busy,body.busy *{cursor:wait !important}
+.primary:disabled{opacity:.55}
 .result{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:6px;background:#fbfaff}
 .retrybox p{margin:0 0 10px;font-size:14px;color:var(--ink)}
 .ver{margin-top:10px;font-size:11px;color:#9aa0a6;text-align:center}
@@ -558,7 +560,7 @@ mark{background:#fff3b0;border-radius:2px;padding:0 1px}
         <button id="resetSettingsBtn" type="button" class="danger" data-i18n="set.resetSet">还原默认设置</button>
       </div>
     </div>
-    <div class="ver"><span data-i18n="set.version">版本</span> v20261011-02 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
+    <div class="ver"><span data-i18n="set.version">版本</span> v20261011-03 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
   </section>
 </main>
 <script>
@@ -3670,6 +3672,16 @@ async function trimTtsCache(limit) {
   });
 }
 async function genRefAudio(text, autoplay) {
+  const box = $('sentenceText'), btn = $('genBtn');
+  const hadFocus = document.activeElement === box;
+  let settled = false;
+  // 缓存命中走本地读取（极快），只有调 API 才慢：300ms 还没回来就进忙碌态，避免命中时闪一下
+  const timer = setTimeout(() => {
+    if (settled) return;
+    document.body.classList.add('busy');
+    if (box) box.disabled = true;
+    if (btn) btn.disabled = true;
+  }, 300);
   try {
     const r = await ttsCached(text);
     lastRefBlob = r.blob;
@@ -3681,6 +3693,13 @@ async function genRefAudio(text, autoplay) {
   } catch (e) {
     if (!e || !e.silent) dlg({ title: t('sent.genFail'), message: friendlyErr(e) });
     return false;
+  } finally {
+    settled = true;
+    clearTimeout(timer);
+    document.body.classList.remove('busy');
+    if (box) box.disabled = false;
+    if (btn) btn.disabled = false;
+    if (hadFocus && box) box.focus();
   }
 }
 
