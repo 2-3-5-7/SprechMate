@@ -558,7 +558,7 @@ mark{background:#fff3b0;border-radius:2px;padding:0 1px}
         <button id="resetSettingsBtn" type="button" class="danger" data-i18n="set.resetSet">还原默认设置</button>
       </div>
     </div>
-    <div class="ver"><span data-i18n="set.version">版本</span> v20261010-02 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
+    <div class="ver"><span data-i18n="set.version">版本</span> v20261011-02 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
   </section>
 </main>
 <script>
@@ -831,7 +831,7 @@ zh: {
   'chat.reqFail': '请求失败',
   'chat.emptyResp': '接口返回为空',
   'sent.title': '{lang}跟读',
-  'sent.ph': '点击上方对话中的一句话，这里会自动填入',
+  'sent.ph': '点击上方对话中的一句话，这里会自动填入（回车生成原声，Shift+回车换行）',
   'sent.gen': '生成原声',
   'sent.dl': '下载原声',
   'sent.play': '播放',
@@ -1105,7 +1105,7 @@ en: {
   'chat.reqFail': 'Request failed',
   'chat.emptyResp': 'Empty response from API',
   'sent.title': '{lang} Shadowing',
-  'sent.ph': 'Tap a line in the chat above and it will appear here',
+  'sent.ph': 'Tap a chat line above to fill in here (Enter: generate, Shift+Enter: new line)',
   'sent.gen': 'Generate audio',
   'sent.dl': 'Download audio',
   'sent.play': 'Play',
@@ -4652,6 +4652,26 @@ async function init() {
   $('clearBtn').onclick = () => { const i = $('chatInput'); i.value = ''; i.focus(); };
 
   $('genBtn').onclick = () => genRefAudio($('sentenceText').value, true);
+  $('sentenceText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('genBtn').click(); }
+  });
+  /* 页面有焦点但不在输入框时，Ctrl+V 直接粘贴到跟读框并聚焦（从别处复制句子过来练） */
+  document.addEventListener('paste', e => {
+    const ae = document.activeElement;
+    const inField = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (inField) return; // 已经在输入框里，走默认粘贴
+    if ($('view-practice').classList.contains('hidden')) return; // 设置页不触发
+    if (document.querySelector('.dlg-ov')) return; // 弹窗打开时不触发
+    if ($('drawer').classList.contains('open')) return; // 抽屉打开时不触发
+    const text = (e.clipboardData && e.clipboardData.getData('text')) || '';
+    if (!text.trim()) return;
+    e.preventDefault();
+    const box = $('sentenceText');
+    box.value = text;
+    autoGrowTextarea(box);
+    refreshSentenceBlur();
+    box.focus();
+  });
   $('dlRefBtn').onclick = downloadRefAudio;
   $('recBtn').onclick = onRecBtn;
   initRefRate();
