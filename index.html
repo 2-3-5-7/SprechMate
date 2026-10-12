@@ -22,6 +22,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .iconbtn{background:none;border:none;color:#fff;font-size:20px;padding:4px 10px;cursor:pointer}
 main{max-width:680px;margin:0 auto;padding:12px 12px 24px}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#sentenceCard{scroll-margin-top:80px} /* sticky 顶栏约 70px，滚动置顶时留出不被盖住 */
 .card h2{margin:0 0 10px;font-size:16px}
 .card h3{margin:14px 0 8px;font-size:14px;color:var(--mut)}
 .hint{color:var(--mut);font-size:13px}
@@ -560,7 +561,7 @@ mark{background:#fff3b0;border-radius:2px;padding:0 1px}
         <button id="resetSettingsBtn" type="button" class="danger" data-i18n="set.resetSet">还原默认设置</button>
       </div>
     </div>
-    <div class="ver"><span data-i18n="set.version">版本</span> v20261011-03 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
+    <div class="ver"><span data-i18n="set.version">版本</span> v20261012-02 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
   </section>
 </main>
 <script>
@@ -3417,7 +3418,7 @@ function selectSentence(text, scroll) {
   autoGrowTextarea(box);
   refreshSentenceBlur(); // 隐藏德语开启且没焦点时模糊
   genRefAudio(t, true); // 自动生成并播放
-  if (scroll !== false) $('sentenceCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (scroll !== false) $('sentenceCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /* 隐藏德语开启时，原声跟读框在没有焦点时模糊（里面也是德语）；点进去编辑则显示。
@@ -4417,7 +4418,7 @@ async function restoreRecord(convId, recId) {
       myPlayer.load(myRecordingUrl, false);
     }
   } catch (e) {}
-  $('recordCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('sentenceCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); // 跟读模块置顶，下面是文本框，用户知道读的是什么
 }
 
 function renderHistory() {
@@ -4510,7 +4511,7 @@ function applySharedText(shared) {
     box.value = t;
     autoGrowTextarea(box);
     refreshSentenceBlur();
-    $('sentenceCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('sentenceCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 /* 分享来的文本只解析并清掉 URL 参数；实际填框+生成+滚动等 init 渲染完成后再做，否则滚动位置会被后续渲染冲掉 */
