@@ -561,7 +561,7 @@ mark{background:#fff3b0;border-radius:2px;padding:0 1px}
         <button id="resetSettingsBtn" type="button" class="danger" data-i18n="set.resetSet">还原默认设置</button>
       </div>
     </div>
-    <div class="ver"><span data-i18n="set.version">版本</span> v20261012-02 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
+    <div class="ver"><span data-i18n="set.version">版本</span> v20261013-04 · <a class="ver-link" href="https://github.com/2-3-5-7/SprechMate" target="_blank" rel="noopener">GitHub</a></div>
   </section>
 </main>
 <script>
@@ -3465,6 +3465,10 @@ function createPlayer(ns, getRate) {
       setIcon(false); seek.value = 0; cur.textContent = '0:00';
       if (autoplay) audio.play().catch(() => {});
     },
+    stop() { // 停止（非暂停）：停播并回到开头，下次从头播
+      audio.pause();
+      try { audio.currentTime = 0; } catch (e) {}
+    },
     clear() { // 切会话时回到初始状态：停播、清 src、禁用按钮
       audio.pause();
       audio.removeAttribute('src');
@@ -3674,7 +3678,6 @@ async function trimTtsCache(limit) {
 }
 async function genRefAudio(text, autoplay) {
   const box = $('sentenceText'), btn = $('genBtn');
-  const hadFocus = document.activeElement === box;
   let settled = false;
   // 缓存命中走本地读取（极快），只有调 API 才慢：300ms 还没回来就进忙碌态，避免命中时闪一下
   const timer = setTimeout(() => {
@@ -3700,7 +3703,6 @@ async function genRefAudio(text, autoplay) {
     document.body.classList.remove('busy');
     if (box) box.disabled = false;
     if (btn) btn.disabled = false;
-    if (hadFocus && box) box.focus();
   }
 }
 
@@ -3878,12 +3880,17 @@ async function startRecording() {
   if (!text) { alertDlg(t('rec.noText', { lang: learnLangName() })); return; }
   const s = getSettings();
   if (!s.azureKey || !s.azureRegion) { alertDlg(t('rec.noKey')); return; }
+  refPlayer.stop(); myPlayer.stop(); // 点录音先停掉原声+我的录音播放（停止非暂停），避免麦克风收到播放声
   setRecUI('starting');
   setRecHint('');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } // 直通麦克风原始信号：浏览器的降噪/增益会吃掉擦音等发音细节，影响打分
-    });
+    // pause() 不是瞬时：等 500ms 让音频管线排空，否则开头会录进去一小截尾音；与 getUserMedia 并行，不增加总等待
+    const stream = await Promise.all([
+      navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } // 直通麦克风原始信号：浏览器的降噪/增益会吃掉擦音等发音细节，影响打分
+      }),
+      new Promise(r => setTimeout(r, 500))
+    ]).then(([st]) => st);
     const chunks = [];
     const recorder = new MediaRecorder(stream);
     recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
@@ -4673,7 +4680,7 @@ async function init() {
 
   $('genBtn').onclick = () => genRefAudio($('sentenceText').value, true);
   $('sentenceText').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('genBtn').click(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('sentenceText').blur(); $('genBtn').click(); } // 失焦：生成后焦点不在框里，快捷键立即可用
   });
   /* 页面有焦点但不在输入框时，Ctrl+V 直接粘贴到跟读框并聚焦（从别处复制句子过来练） */
   document.addEventListener('paste', e => {
